@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" crossorigin="anonymous"></script>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EQ V2 - Surah List</title>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarTogglerDemo03" aria-controls="navbarTogglerDemo03" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    <a class="navbar-brand" href="#">EQURAN V2</a>
+
+    <div class="collapse navbar-collapse" id="navbarTogglerDemo03">
+        <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
+            <li class="nav-item">
+                <a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true">Home</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true">About</a>
+            </li>
+        </ul>
+        <form class="form-inline my-2 my-lg-0">
+            <input class="form-control mr-sm-2" type="search" placeholder="Cari Surah" aria-label="Search">
+            <button class="btn btn-outline-success my-2 my-sm-0" text-white type="submit">Cari</button>
+        </form>    
+    </div>
+</nav>
+
+    <div class="container mt-5">
+        <h1>Al-Qur'an Digital Masa Kini</h1>
+        <div class="row card-list">
+        </div>
+    </div>
+
+    <!-- Modal untuk menampilkan detail surat -->
+    <div class="modal fade" id="surahDetailModal" tabindex="-1" aria-labelledby="surahDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="surahDetailModalLabel">Surah Detail</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" id="surahDetailContent">
+                    <!-- Detail surat akan ditampilkan di sini -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Daftar Surah
+        function fetchSurahList() {
+    console.log('Fetching Surah data...');
+    $.ajax({
+        url: 'https://equran.id/api/v2/surat',
+        method: 'get',
+        dataType: 'json',
+        success: function(response) {
+            console.log("API Response:", response);
+
+            if (response.data && Array.isArray(response.data)) {
+                response.data.forEach(function(surah) {
+                    let surahNala = surah.namaLatin; // Sesuaikan dengan nama properti yang benar
+                    let surahNama = surah.nama;
+                    let surahArti = surah.arti;
+                    let surahAyat = surah.jumlahAyat;
+                    let surahAsal = surah.tempatTurun;
+                    let surahId = surah.nomor; // Tambahkan ID surah
+
+                    $('.card-list').append(`
+                        <div class="col-md-4 mb-4">
+                            <div class="card shadow-sm">
+                                <div class="card-body d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <h5>${surahNala} (${surahNama})</h5>
+                                        <p>${surahArti} - ${surahAyat} ayat - ${surahAsal}</p>
+                                        <button class="btn btn-primary mt-2" onclick="showDetail(${surahId})" data-toggle="modal" data-target="#surahDetailModal">Lihat Surah</button>
+                                    </div>
+                                    <div style="font-size: 2em; font-weight: bold; color: #007bff;">
+                                        ${surahId}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `);
+                });
+            } else {
+                console.error("Data 'surah' not found in response.");
+                alert("Data Surah tidak ditemukan. Periksa kembali API.");
+            }
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+            console.error("Error fetching data:", textStatus, errorThrown);
+            alert("Terjadi kesalahan saat mengambil data. Periksa API atau coba lagi nanti.");
+        }
+    });
+}
+
+// Surah Detail
+function showDetail(id) {
+    $.ajax({
+        url: `https://equran.id/api/v2/surat/${id}`, // URL API dengan parameter ID surah
+        method: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            console.log("Detail Response:", response);
+
+            if (response.data) {
+                let surahDetail = response.data;
+                let audioList = Object.values(surahDetail.audioFull).map(audio => 
+                    `<li><a href="${audio}" target="_blank">Play Audio</a></li>`
+                ).join('');
+
+                let ayatList = surahDetail.ayat.map(ayat => `
+                    <div class="ayat">
+                        <p><strong>Ayat ${ayat.nomorAyat}:</strong> ${ayat.teksArab}</p>
+                        <p>Latin: ${ayat.teksLatin}</p>
+                        <p>Terjemahan: ${ayat.teksIndonesia}</p>
+                        <audio controls>
+                            <source src="${ayat.audio['01']}" type="audio/mp3">
+                            Browser Anda tidak mendukung audio.
+                        </audio>
+                    </div>
+                `).join('');
+
+                let detailHtml = `
+                    <h5>${surahDetail.namaLatin} (${surahDetail.nama})</h5>
+
+                    <p>Deskripsi: ${surahDetail.deskripsi}</p>
+                    <h6>Audio Full:</h6>
+                    <ul>${audioList}</ul>
+                    <h6>Ayat:</h6>
+                    ${ayatList}
+                `;
+                $('#surahDetailContent').html(detailHtml);
+            } else {
+                $('#surahDetailContent').html('<p>Detail surat tidak ditemukan.</p>');
+            }
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+            console.error("Error fetching surah detail:", textStatus, errorThrown);
+            $('#surahDetailContent').html('<p>Terjadi kesalahan saat mengambil detail surat. Coba lagi nanti.</p>');
+        }
+    });
+}
+
+
+        fetchSurahList();
+    </script>
+
+    <!-- Bootstrap & jQuery plugins for Modal -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
